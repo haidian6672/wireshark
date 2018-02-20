@@ -236,7 +236,7 @@ INT AirPDcapCcmpDecrypt(
 	if (gcry_cipher_open(&rijndael_handle, GCRY_CIPHER_AES, GCRY_CIPHER_MODE_ECB, 0)) {
 		return 1;
 	}
-        memset(TK1, 0, 16);
+        // memset(TK1, 0, 16);
 	if (gcry_cipher_setkey(rijndael_handle, TK1, 16)) {
 		gcry_cipher_close(rijndael_handle);
 		return 1;

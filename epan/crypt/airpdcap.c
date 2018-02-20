@@ -507,6 +507,14 @@ AirPDcapGetSaPtr(
             return NULL;
         }
     }
+
+    for (guint i=0; i<ctx->keys_nr; i++) {
+        if (ctx->keys[i].KeyType==AIRPDCAP_KEY_TYPE_PTK_TK) {
+            memcpy(AIRPDCAP_GET_TK(ctx->sa[sa_index].wpa.ptk),
+                   &ctx->keys[i].KeyData.Tk, AIRPDCAP_TK_LEN);
+        }
+    }
+
     /* get the Security Association structure   */
     return &ctx->sa[sa_index];
 }
@@ -930,6 +938,8 @@ INT AirPDcapSetKeys(
                 AIRPDCAP_DEBUG_PRINT_LINE("AirPDcapSetKeys", "Set a WPA-PMK key", AIRPDCAP_DEBUG_LEVEL_4);
             } else if (keys[i].KeyType==AIRPDCAP_KEY_TYPE_WEP) {
                 AIRPDCAP_DEBUG_PRINT_LINE("AirPDcapSetKeys", "Set a WEP key", AIRPDCAP_DEBUG_LEVEL_4);
+            } else if (keys[i].KeyType==AIRPDCAP_KEY_TYPE_PTK_TK) {
+                AIRPDCAP_DEBUG_PRINT_LINE("AirPDcapSetKeys", "Set a TK key", AIRPDCAP_DEBUG_LEVEL_4);
             } else {
                 AIRPDCAP_DEBUG_PRINT_LINE("AirPDcapSetKeys", "Set a key", AIRPDCAP_DEBUG_LEVEL_4);
             }
@@ -1123,15 +1133,16 @@ AirPDcapRsnaMng(
     /* start of loop added by GCS */
     for(/* sa */; sa != NULL ;sa=sa->next) {
 
-       if (sa->validKey==FALSE) {
-           AIRPDCAP_DEBUG_PRINT_LINE("AirPDcapRsnaMng", "Key not yet valid", AIRPDCAP_DEBUG_LEVEL_3);
-           continue;
-       }
+       // if (sa->validKey==FALSE) {
+       //     AIRPDCAP_DEBUG_PRINT_LINE("AirPDcapRsnaMng", "Key not yet valid", AIRPDCAP_DEBUG_LEVEL_3);
+       //     continue;
+       // }
 
        /* copy the encrypted data into a temp buffer */
        memcpy(try_data, decrypt_data, *decrypt_len);
 
-       if (sa->wpa.key_ver==1) {
+       // if (sa->wpa.key_ver==1) {
+       if (0) {
            /* CCMP -> HMAC-MD5 is the EAPOL-Key MIC, RC4 is the EAPOL-Key encryption algorithm */
            AIRPDCAP_DEBUG_PRINT_LINE("AirPDcapRsnaMng", "TKIP", AIRPDCAP_DEBUG_LEVEL_3);
            DEBUG_DUMP("ptk", sa->wpa.ptk, 64);
@@ -1153,7 +1164,7 @@ AirPDcapRsnaMng(
 
            ret_value=AirPDcapCcmpDecrypt(try_data, mac_header_len, (INT)*decrypt_len, AIRPDCAP_GET_TK(sa->wpa.ptk));
            if (ret_value)
-              continue;
+               continue;
 
            AIRPDCAP_DEBUG_PRINT_LINE("AirPDcapRsnaMng", "CCMP DECRYPTED!!!", AIRPDCAP_DEBUG_LEVEL_3);
            /* remove MIC (8bytes) from the end of packet */
@@ -1623,6 +1634,9 @@ AirPDcapValidateKey(
             break;
 
         case AIRPDCAP_KEY_TYPE_WPA_PMK:
+            break;
+
+        case AIRPDCAP_KEY_TYPE_PTK_TK:
             break;
 
         default:
@@ -2119,6 +2133,29 @@ parse_key_string(gchar* input_string, guint8 key_type)
 
         g_byte_array_free(key_ba, TRUE);
         return dk;
+
+    case AIRPDCAP_KEY_TYPE_PTK_TK:
+
+       key_ba = g_byte_array_new();
+       res = hex_str_to_bytes(input_string, key_ba, FALSE);
+
+       if (res && key_ba->len > 0) {
+           /* Create the decryption_key_t structure, fill it and return it*/
+           dk = (decryption_key_t *)g_malloc(sizeof(decryption_key_t));
+
+           dk->type = AIRPDCAP_KEY_TYPE_PTK_TK;
+           /* XXX - The current key handling code in the GUI requires
+            * no separators and lower case */
+           tmp_str = bytes_to_str(NULL, key_ba->data, key_ba->len);
+           dk->key  = g_string_new(tmp_str);
+           g_string_ascii_down(dk->key);
+           dk->bits = key_ba->len * 8;
+           dk->ssid = NULL;
+
+           wmem_free(NULL, tmp_str);
+           g_byte_array_free(key_ba, TRUE);
+           return dk;
+       }
     }
 
     /* Type not supported */

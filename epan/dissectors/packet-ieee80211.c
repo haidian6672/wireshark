@@ -194,6 +194,12 @@ uat_wep_key_record_update_cb(void* r, char** err)
           return FALSE;
         }
         break;
+      case AIRPDCAP_KEY_TYPE_PTK_TK:
+        if (rec->key != AIRPDCAP_KEY_TYPE_PTK_TK) {
+          *err = g_strdup("Invalid PTK-TK key format");
+          return FALSE;
+        }
+        break;
       default:
         *err = g_strdup("Invalid key format");
         return FALSE;
@@ -2720,6 +2726,7 @@ static const value_string wep_type_vals[] = {
   { AIRPDCAP_KEY_TYPE_WEP, STRING_KEY_TYPE_WEP },
   { AIRPDCAP_KEY_TYPE_WPA_PWD, STRING_KEY_TYPE_WPA_PWD },
   { AIRPDCAP_KEY_TYPE_WPA_PSK, STRING_KEY_TYPE_WPA_PSK },
+  { AIRPDCAP_KEY_TYPE_PTK_TK, STRING_KEY_TYPE_PTK_TK },
   { 0x00, NULL }
 };
 
@@ -19490,6 +19497,21 @@ set_airpdcap_keys(void)
           keys->nKeys += 1;
         }
       }
+      else if (dk->type == AIRPDCAP_KEY_TYPE_PTK_TK)
+      {
+        gboolean res;
+        key.KeyType = AIRPDCAP_KEY_TYPE_PTK_TK;
+
+        bytes = g_byte_array_new();
+        res = hex_str_to_bytes(dk->key->str, bytes, FALSE);
+
+        if (dk->key->str && res && (bytes->len > 0) && (bytes->len == AIRPDCAP_WPA_PTK_TK_LEN))
+        {
+          memcpy(key.KeyData.Tk.Tk, bytes->data, bytes->len);
+          keys->Keys[keys->nKeys] = key;
+          keys->nKeys += 1;
+        }
+      }
       free_key_string(dk);
       if (bytes) {
         g_byte_array_free(bytes, TRUE);
@@ -27718,7 +27740,8 @@ proto_register_ieee80211(void)
       UAT_FLD_CSTRING(uat_wep_key_records, string, "Key",
                         "wep:<wep hexadecimal key>\n"
                         "wpa-pwd:<passphrase>[:<ssid>]\n"
-                        "wpa-psk:<wpa hexadecimal key>"),
+                        "wpa-psk:<wpa hexadecimal key>\n"
+                        "ptk-tk: <hexadecimal key>"),
       UAT_END_FIELDS
     };
 
@@ -28179,7 +28202,8 @@ proto_register_ieee80211(void)
                                 "Key examples: 01:02:03:04:05 (40/64-bit WEP),\n"
                                 "010203040506070809101111213 (104/128-bit WEP),\n"
                                 "MyPassword[:MyAP] (WPA + plaintext password [+ SSID]),\n"
-                                "0102030405...6061626364 (WPA + 256-bit key)."
+                                "0102030405...6061626364 (WPA + 256-bit key).\n"
+                                "000102030405060708090a0b0c0d0e0f (PTK-TK + 128-bit key).\n"
                                 "Invalid keys will be ignored.",
                                 wep_uat);
 }

@@ -57,6 +57,7 @@
 #define	AIRPDCAP_KEY_TYPE_WPA_PMK	5
 #define	AIRPDCAP_KEY_TYPE_TKIP		6
 #define	AIRPDCAP_KEY_TYPE_CCMP		7
+#define	AIRPDCAP_KEY_TYPE_PTK_TK	8
 
 /*	Decryption algorithms fields size definition (bytes)								*/
 #define	AIRPDCAP_WEP_KEY_MINLEN		1
@@ -69,6 +70,7 @@
 #define	AIRPDCAP_WPA_SSID_MIN_LEN			0
 #define	AIRPDCAP_WPA_SSID_MAX_LEN			32
 #define	AIRPDCAP_WPA_PSK_LEN				32
+#define	AIRPDCAP_WPA_PTK_TK_LEN				16
 /*																										*/
 /*																										*/
 /******************************************************************************/
@@ -152,6 +154,9 @@ typedef struct _AIRPDCAP_KEY_ITEM {
 			UCHAR Psk[AIRPDCAP_WPA_PSK_LEN];
 			UCHAR Ptk[AIRPDCAP_WPA_PTK_LEN];
 		} Wpa;
+		struct AIRPDCAP_KEY_ITEMDATA_PTK_TK {
+			UCHAR Tk[AIRPDCAP_TK_LEN];
+		} Tk;
 	} KeyData;
 
         struct AIRPDCAP_KEY_ITEMDATA_PWD {
